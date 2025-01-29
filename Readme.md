@@ -1,4 +1,4 @@
-#Introducción
+# Introducción
 El problema presentado consiste en desencriptar una carpeta cifrada que contiene credenciales de acceso a varios bancos rusos, las cuales son utilizadas por un grupo de cibercriminales para transferir dinero obtenido de rescates de ransomware. La carpeta cifrada está protegida por una clave de cifrado, la cual a su vez está cifrada con la clave pública de un certificado. En este escenario, se cuenta con la clave pública y privada del certificado, pero se desconoce la contraseña necesaria para acceder a la clave privada.
 #Objetivo
 El objetivo es obtener el login y la contraseña de acceso al banco Gazprombank, para lo cual se deben seguir una serie de pasos que permitan desencriptar la carpeta cifrada y acceder a las credenciales.
@@ -8,12 +8,12 @@ Para resolver este problema, se dispone de la siguiente información y archivos 
 -	Los certificados digitales con las claves públicas de los cinco destinatarios del mensaje están en el archivo bundle.pem
 -	El certificado digital con las claves pública y privada están en el archivo EvilHacker.pfx
 -	La carpeta cifrada con todos los archivos, incluido el que contiene las credenciales de acceso a los bancos, se encuentra en el archivo EncryptedFolder.xml
-#Metodología
+# Metodología
 Para llevar a cabo la resolución del problema, se seguirán los siguientes pasos detallados:
-##1.	Desencriptar el Mensaje de Correo
+## 1.	Desencriptar el Mensaje de Correo
 El primer paso consiste en guardar los archivos en la carpeta: 0_Material_Original
 Posterior se comienza a desencriptar el mensaje de correo cifrado (mail.msg) que contiene la contraseña de acceso al certificado con las claves pública y privada. Para ello se realizan los siguientes pasos:
-###1.1.	Revisión archivo mail.msg
+### 1.1.	Revisión archivo mail.msg
 Para realizar este paso se procede a revisar el archivo con openssl
 El comando usado es:
 openssl smime -pk7out -in 0_Material_Original/mail.msg | openssl pkcs7 -print -text -noout
@@ -28,7 +28,7 @@ Salida del email mail.msg
 Adicional se identifica el mensaje cifrado (el mensaje encriptado enc_data con su respectivo iv [OCTET STRING] )
  
 Mensaje encriptado en mail.msg
-###1.2.	Revisión bundle.pem
+### 1.2.	Revisión bundle.pem
 Se realiza la separación del archivo en 5 archivos individuales, las mismas en la carpeta: Cer_Pub_atack
 -	kpub1.pem
 -	kpub2.pem
@@ -57,7 +57,7 @@ Con los valores obtenidos, se usa el script en Python que permitirá realizar el
 Salida de cálculo del CRT
 Siendo el valor de K (desencriptado)
 •	1d680dd0af91a59b6b3c7bdfff6c9479a85ab8c6c1ac320a0577edcb55f215ae
-###1.3.	Desencriptación mail.msg
+### 1.3.	Desencriptación mail.msg
 Se realiza la separación del enc_data con los valores del iv obtenidos y el valor de K anteriormente obtenidos; se guarda el valor de enc_data en el documento msg.enc, el cual se encuentra guardado: msg_enc_dec
 Se usa el comando:
 openssl enc -d -aes-256-cbc -in msg_enc_dec/mensaje.enc -K 1d680dd0af91a59b6b3c7bdfff6c9479a85ab8c6c1ac320a0577edcb55f215ae -iv B1A88E22D5583059CC2A1FA1FB596FBB -out msg_enc_dec/msg.txt
@@ -66,7 +66,7 @@ El cual nos da el mensaje desencriptado y ya se puede ver la clave del archivo p
 Mensaje desencriptado
 El contenido del mensaje es:
 -	ImperatorskayaRossiya
-##2.	Acceder a la Clave Privada del Certificado
+## 2.	Acceder a la Clave Privada del Certificado
 Utilizando la contraseña obtenida en el paso anterior, se procederá a abrir el archivo EvilHacker.pfx y acceder a la clave privada del certificado. 
 Para esto se usa el comando:
 openssl pkcs12 -in 0_Material_Original/EvilHacker.pfx -nocerts -out Files_enc_dec/Kpriv_eh.pem
@@ -75,7 +75,7 @@ openssl pkcs12 -in 0_Material_Original/EvilHacker.pfx -nokeys -clcerts -out File
 El cual nos permite obtener la clave publica y guardarlo en el archivo Kpriv_eh.pem 
 Los archivos se guardan en: Files_enc_dec
 Se realiza la validación que la clave publica es la usada para encriptar los Secret_key del archivo EncryptedFolder.xml, por lo que se abre el archivo y se lo separa en archivos individuales.
-###2.1.	Separación EncryptedFolder.xml
+### 2.1.	Separación EncryptedFolder.xml
  
 revisión del archivo XML
 Se realiza la separación del archivo en 10 archivos individuales, las mismas en la carpeta: Files_enc_dec
@@ -96,8 +96,8 @@ Los IV de cada archivo (en formato Hexadecimal):
 -	IVF3.hex
 Se realiza la comparación de ambos certificados: Kpub_eh.pem y Kpub.pem
 
-##3.	Desencriptar los archivos
-###3.1.	Desencriptación de KF con Krpiv_eh.pem
+## 3.	Desencriptar los archivos
+### 3.1.	Desencriptación de KF con Krpiv_eh.pem
 Se realiza la desencriptación con el siguiente comando:
 openssl rsautl -decrypt -inkey Files_enc_dec/kpriv_eh.pem -in Files_enc_dec/KF<id>.enc -out Files_enc_dec/KF<id>.dec
 El cual nos genera los siguientes archivos:
@@ -108,7 +108,7 @@ Cuyos valores son (en hexadecimal):
 -	E4D7514A30BCD2BC18ADAB61207FFA94
 -	E00EEC7AA64A107BEA38965FBEA2AA05
 -	0E4ACBF031C531F4EEC0BE27CCDECE1A
-###3.2.	Desencriptación de F*.enc con KF e IV
+### 3.2.	Desencriptación de F*.enc con KF e IV
 Con los valores desencriptados de las claves, se procede a realizar la desencriptación de los archivos encriptados con AES-128, con el comando:
 openssl aes-128-cbc -d -in Files_enc_dec/F*.enc -out Files_enc_dec/F*.dec -K Files_enc_dec/<KF*> -iv Files_enc_dec/<IVF*>
 Cuyos valores de iv (en hexadecimal):
@@ -119,7 +119,7 @@ Genera los siguientes archivos:
 -	F1.dec
 -	F2.dec
 -	F3.dec
-##4.	Acceder a las Credenciales de Gazprombank
+## 4.	Acceder a las Credenciales de Gazprombank
 Finalmente, con los archivos desencriptados se ve los contenidos (alamacenados en la carpeta: Files_enc_dec)
  
 Lo solicitado por el problema se encuentra en el archivo encriptado numero 3 cuyo resultado es:
@@ -127,7 +127,7 @@ Gazprombank
 login: gonzalo.alvarez
 pwd: MH6KNu;D'm4p/"#}=X+9k
 
-#Conclusión
+# Conclusión
 El proceso descrito anteriormente permite la obtención de las credenciales de acceso al banco Gazprombank mediante una serie de pasos que implican la desencriptación de mensajes de correo y archivos cifrados. 
 Se uso las herramientas indicadas (openssl y cryptool) y solo se creo un sript en Python para realizar el cálculo del CRT
 
